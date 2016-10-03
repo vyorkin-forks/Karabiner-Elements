@@ -11,6 +11,7 @@
 #include "system_preferences.hpp"
 #include "types.hpp"
 #include "virtual_hid_manager_client.hpp"
+#include "../../../../share/types.hpp"
 #include <IOKit/hidsystem/ev_keymap.h>
 #include <boost/optional.hpp>
 #include <list>
@@ -115,6 +116,14 @@ public:
 
   void add_fn_function_key(krbn::key_code from_key_code, krbn::key_code to_key_code) {
     fn_function_keys_.add(from_key_code, to_key_code);
+  }
+
+  void clear_standalone_modifiers(void) {
+    standalone_modifiers_.clear();
+  }
+
+  void add_standalone_modifier(krbn::key_code from_key_code, krbn::key_code to_key_code) {
+    standalone_modifiers_.add(from_key_code, to_key_code);
   }
 
   void create_event_dispatcher_client(void) {
@@ -226,12 +235,17 @@ public:
       return;
     }
 
+    if (process_standalone_modifier_key(to_key_code, pressed)) {
+      key_repeat_manager_.stop();
+      return;
+    }
+
     if (post_modifier_flag_event(to_key_code, pressed)) {
       key_repeat_manager_.stop();
       return;
     }
 
-    post_key(from_key_code, to_key_code, pressed, false);
+    post_key(from_key_code, to_key_code, pressed, false, true);
 
     // set key repeat
     long initial_key_repeat_milliseconds = 0;
@@ -459,7 +473,7 @@ private:
                                     key_repeat_milliseconds * NSEC_PER_MSEC,
                                     0);
           dispatch_source_set_event_handler(timer_, ^{
-            event_manipulator_.post_key(from_key_code, to_key_code, pressed, true);
+            event_manipulator_.post_key(from_key_code, to_key_code, pressed, true, true);
           });
           dispatch_resume(timer_);
           from_key_code_ = from_key_code;
@@ -476,6 +490,45 @@ private:
     boost::optional<krbn::key_code> from_key_code_;
     std::mutex mutex_;
   };
+
+  bool process_standalone_modifier_key(krbn::key_code key_code, bool pressed) {
+    auto modifier_flag = krbn::types::get_modifier_flag(key_code);
+    auto standalone_modifier = modifier_flag_manager_.get_standalone_modifier();
+    if (pressed) {
+      if (modifier_flag != krbn::modifier_flag::zero) {
+        if (standalone_modifier != krbn::modifier_flag::zero) {
+          post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+        }
+        modifier_flag_manager_.set_standalone(modifier_flag);
+        return true;
+      } else {
+        post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+        modifier_flag_manager_.reset_standalone();
+        return false;
+      }
+    } else {
+      if ((modifier_flag != krbn::modifier_flag::zero) && (standalone_modifier != krbn::modifier_flag::zero) && (modifier_flag == standalone_modifier)) {
+        modifier_flag_manager_.reset_standalone();
+        if (!post_standalone_modifier_key(key_code)) {
+          post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+          post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), false);
+        }
+        return true;
+      } else {
+        modifier_flag_manager_.reset_standalone();
+        return false;
+      }
+    }
+  }
+
+  bool post_standalone_modifier_key(krbn::key_code keycode) {
+    if (auto to_key_code = standalone_modifiers_.get(keycode)) {
+      post_key(*to_key_code, *to_key_code, true, false, false);
+      post_key(*to_key_code, *to_key_code, false, false, false);
+      return true;
+    }
+    return false;
+  }
 
   bool post_modifier_flag_event(krbn::key_code key_code, bool pressed) {
     auto operation = pressed ? manipulator::modifier_flag_manager::operation::increase : manipulator::modifier_flag_manager::operation::decrease;
@@ -510,11 +563,18 @@ private:
     }
   }
 
-  void post_key(krbn::key_code from_key_code, krbn::key_code to_key_code, bool pressed, bool repeat) {
+  void post_key(krbn::key_code from_key_code, krbn::key_code to_key_code, bool pressed, bool repeat, bool with_modifier) {
     if (event_source_) {
       if (auto cg_key = krbn::types::get_cg_key(to_key_code)) {
         if (auto event = CGEventCreateKeyboardEvent(event_source_, static_cast<CGKeyCode>(*cg_key), pressed)) {
-          CGEventSetFlags(event, modifier_flag_manager_.get_cg_event_flags(CGEventGetFlags(event), to_key_code));
+          auto event_flags = CGEventGetFlags(event);
+          CGEventFlags flags;
+          if (with_modifier) {
+            flags = modifier_flag_manager_.get_cg_event_flags(event_flags, to_key_code);
+          } else {
+            flags = modifier_flag_manager_.get_cg_event_flags_no_modifiers(event_flags);
+          }
+          CGEventSetFlags(event, flags);
           CGEventSetIntegerValueField(event, kCGKeyboardEventAutorepeat, repeat);
           CGEventPost(kCGHIDEventTap, event);
           CFRelease(event);
@@ -525,7 +585,12 @@ private:
         auto hid_system_aux_control_button = krbn::types::get_hid_system_aux_control_button(to_key_code);
         if (hid_system_key || hid_system_aux_control_button) {
           auto event_type = pressed ? krbn::event_type::key_down : krbn::event_type::key_up;
-          auto flags = modifier_flag_manager_.get_io_option_bits();
+          IOOptionBits flags;
+          if (with_modifier) {
+            flags = modifier_flag_manager_.get_io_option_bits();
+          } else {
+            flags = 0;
+          }
           event_dispatcher_manager_.post_key(to_key_code, event_type, flags, repeat);
         }
       }
@@ -547,6 +612,7 @@ private:
 
   simple_modifications simple_modifications_;
   simple_modifications fn_function_keys_;
+  simple_modifications standalone_modifiers_;
 
   manipulated_keys manipulated_keys_;
   manipulated_keys manipulated_fn_keys_;

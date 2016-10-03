@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "../../../../share/types.hpp"
 #include <CoreGraphics/CoreGraphics.h>
 #include <thread>
 #include <vector>
@@ -21,6 +22,8 @@ public:
     states_[static_cast<size_t>(krbn::modifier_flag::right_option)] = std::make_unique<state>("option", "⌥");
     states_[static_cast<size_t>(krbn::modifier_flag::right_command)] = std::make_unique<state>("command", "⌘");
     states_[static_cast<size_t>(krbn::modifier_flag::fn)] = std::make_unique<state>("fn", "fn");
+
+    standalone_modifier = krbn::modifier_flag::zero;
   }
 
   void reset(void) {
@@ -92,6 +95,18 @@ public:
     return true;
   }
 
+  void set_standalone(krbn::modifier_flag modifier_flag) {
+    standalone_modifier = modifier_flag;
+  }
+
+  void reset_standalone(void) {
+    standalone_modifier = krbn::modifier_flag::zero;
+  }
+
+  krbn::modifier_flag get_standalone_modifier(void) {
+    return standalone_modifier;
+  }
+
   uint8_t get_hid_report_bits(void) const {
     uint8_t bits = 0;
 
@@ -150,8 +165,12 @@ public:
     return bits;
   }
 
+  CGEventFlags get_cg_event_flags_no_modifiers(CGEventFlags original_flags) const {
+    return CGEventFlags(original_flags & ~(kCGEventFlagMaskAlphaShift | kCGEventFlagMaskControl | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand | kCGEventFlagMaskNumericPad | kCGEventFlagMaskSecondaryFn));
+  }
+
   CGEventFlags get_cg_event_flags(CGEventFlags original_flags, krbn::key_code key_code) const {
-    original_flags = CGEventFlags(original_flags & ~(kCGEventFlagMaskAlphaShift | kCGEventFlagMaskControl | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand | kCGEventFlagMaskNumericPad | kCGEventFlagMaskSecondaryFn));
+    original_flags = get_cg_event_flags_no_modifiers(original_flags);
 
     if (pressed(krbn::modifier_flag::caps_lock)) {
       original_flags = CGEventFlags(original_flags | kCGEventFlagMaskAlphaShift);
@@ -308,5 +327,6 @@ private:
   };
 
   std::vector<std::unique_ptr<state>> states_;
+  krbn::modifier_flag standalone_modifier;
 };
 }
