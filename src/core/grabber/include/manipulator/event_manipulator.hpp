@@ -43,7 +43,17 @@ public:
   }
 
   void grab_mouse_events(void) {
-    event_tap_manager_ = std::make_unique<event_tap_manager>(modifier_flag_manager_);
+    event_tap_manager_ = std::make_unique<event_tap_manager>(modifier_flag_manager_, std::bind(&event_manipulator::pre_tap, this, std::placeholders::_1));
+  }
+
+  void pre_tap(CGEventType type) {
+    if (type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp || type == kCGEventRightMouseDown || type == kCGEventRightMouseUp) {
+      auto standalone_modifier = modifier_flag_manager_.get_standalone_modifier();
+      if (standalone_modifier != krbn::modifier_flag::zero) {
+        post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+        modifier_flag_manager_.reset_standalone();
+      }
+    }
   }
 
   void ungrab_mouse_events(void) {
