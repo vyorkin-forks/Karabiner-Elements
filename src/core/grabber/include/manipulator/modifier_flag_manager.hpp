@@ -21,6 +21,7 @@ public:
     states_[static_cast<size_t>(krbn::modifier_flag::right_option)] = std::make_unique<state>("option", "⌥");
     states_[static_cast<size_t>(krbn::modifier_flag::right_command)] = std::make_unique<state>("command", "⌘");
     states_[static_cast<size_t>(krbn::modifier_flag::fn)] = std::make_unique<state>("fn", "fn");
+    states_[static_cast<size_t>(krbn::modifier_flag::hyper)] = std::make_unique<state>("hyper", "hyper");
   }
 
   void reset(void) {
@@ -119,6 +120,9 @@ public:
     if (pressed(krbn::modifier_flag::right_command)) {
       bits |= (0x1 << 7);
     }
+    if (pressed(krbn::modifier_flag::hyper)) {
+      bits |= (0x1 << 0) | (0x1 << 1) | (0x1 << 2) | (0x1 << 3);
+    }
 
     return bits;
   }
@@ -147,6 +151,9 @@ public:
     if (pressed(krbn::modifier_flag::fn)) {
       bits |= NX_SECONDARYFNMASK;
     }
+    if (pressed(krbn::modifier_flag::hyper)) {
+      bits |= NX_CONTROLMASK | NX_SHIFTMASK | NX_ALTERNATEMASK | NX_COMMANDMASK;
+    }
     return bits;
   }
 
@@ -174,6 +181,9 @@ public:
     }
     if (pressed(krbn::modifier_flag::fn)) {
       original_flags = CGEventFlags(original_flags | kCGEventFlagMaskSecondaryFn);
+    }
+    if (pressed(krbn::modifier_flag::hyper)) {
+      original_flags = CGEventFlags(original_flags | kCGEventFlagMaskControl | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand);
     }
 
     // Add kCGEventFlagMaskNumericPad, kCGEventFlagMaskSecondaryFn by key_code.

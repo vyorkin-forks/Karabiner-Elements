@@ -114,6 +114,7 @@ enum class key_code : uint32_t {
   // predefined virtual modifier flags
   vk_none,
   vk_fn_modifier,
+  vk_hyper_modifier,
 
   // virtual key codes
   vk_consumer_brightness_down,
@@ -191,6 +192,7 @@ enum class modifier_flag : uint32_t {
   right_option,
   right_command,
   fn,
+  hyper,
   prepared_modifier_flag_end_
 };
 
@@ -221,6 +223,8 @@ public:
       return modifier_flag::right_command;
     case static_cast<uint32_t>(key_code::vk_fn_modifier):
       return modifier_flag::fn;
+    case static_cast<uint32_t>(key_code::vk_hyper_modifier):
+      return modifier_flag::hyper;
     default:
       return modifier_flag::zero;
     }
@@ -416,6 +420,7 @@ public:
 
           // Extra
           {"fn", key_code::vk_fn_modifier},
+          {"hyper", key_code::vk_hyper_modifier},
           {"vk_consumer_brightness_down", key_code::vk_consumer_brightness_down},
           {"vk_consumer_brightness_up", key_code::vk_consumer_brightness_up},
           {"vk_consumer_illumination_down", key_code::vk_consumer_illumination_down},
