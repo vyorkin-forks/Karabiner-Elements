@@ -514,7 +514,7 @@ private:
         if (standalone_modifier != krbn::modifier_flag::zero) {
           post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
         }
-        if (mouseDown) {
+        if (mouseDown || !standalone_modifiers_.get(key_code)) {
           return false;
         } else {
           modifier_flag_manager_.set_standalone(modifier_flag);
@@ -540,8 +540,8 @@ private:
     }
   }
 
-  bool post_standalone_modifier_key(krbn::key_code keycode) {
-    if (auto to_key_code = standalone_modifiers_.get(keycode)) {
+  bool post_standalone_modifier_key(krbn::key_code key_code) {
+    if (auto to_key_code = standalone_modifiers_.get(key_code)) {
       post_key(*to_key_code, *to_key_code, true, false, false);
       post_key(*to_key_code, *to_key_code, false, false, false);
       return true;
