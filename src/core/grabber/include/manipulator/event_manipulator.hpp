@@ -53,6 +53,11 @@ public:
         post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
         modifier_flag_manager_.reset_standalone();
       }
+      if (type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown) {
+        mouseDown = true;
+      } else {
+        mouseDown = false;
+      }
     }
   }
 
@@ -509,7 +514,11 @@ private:
         if (standalone_modifier != krbn::modifier_flag::zero) {
           post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
         }
-        modifier_flag_manager_.set_standalone(modifier_flag);
+        if (mouseDown) {
+          return false;
+        } else {
+          modifier_flag_manager_.set_standalone(modifier_flag);
+        }
         return true;
       } else {
         post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
@@ -626,5 +635,7 @@ private:
 
   manipulated_keys manipulated_keys_;
   manipulated_keys manipulated_fn_keys_;
+
+  bool mouseDown;
 };
 }
