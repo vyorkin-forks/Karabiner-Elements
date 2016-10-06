@@ -11,7 +11,6 @@
 #include "system_preferences.hpp"
 #include "types.hpp"
 #include "virtual_hid_manager_client.hpp"
-#include "../../../../share/types.hpp"
 #include <IOKit/hidsystem/ev_keymap.h>
 #include <boost/optional.hpp>
 #include <list>
@@ -521,8 +520,10 @@ private:
         }
         return true;
       } else {
-        post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
-        modifier_flag_manager_.reset_standalone();
+        if (standalone_modifier != krbn::modifier_flag::zero) {
+          post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+          modifier_flag_manager_.reset_standalone();
+        }
         return false;
       }
     } else {
@@ -534,7 +535,10 @@ private:
         }
         return true;
       } else {
-        modifier_flag_manager_.reset_standalone();
+        if (standalone_modifier != krbn::modifier_flag::zero) {
+          post_modifier_flag_event(krbn::types::get_key_code(standalone_modifier), true);
+          modifier_flag_manager_.reset_standalone();
+        }
         return false;
       }
     }

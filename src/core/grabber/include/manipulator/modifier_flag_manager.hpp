@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types.hpp"
-#include "../../../../share/types.hpp"
 #include <CoreGraphics/CoreGraphics.h>
 #include <thread>
 #include <vector>
