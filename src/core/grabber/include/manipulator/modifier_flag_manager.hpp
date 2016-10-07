@@ -164,12 +164,8 @@ public:
     return bits;
   }
 
-  CGEventFlags get_cg_event_flags_no_modifiers(CGEventFlags original_flags) const {
-    return CGEventFlags(original_flags & ~(kCGEventFlagMaskAlphaShift | kCGEventFlagMaskControl | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand | kCGEventFlagMaskNumericPad | kCGEventFlagMaskSecondaryFn));
-  }
-
   CGEventFlags get_cg_event_flags(CGEventFlags original_flags, krbn::key_code key_code) const {
-    original_flags = get_cg_event_flags_no_modifiers(original_flags);
+    original_flags = original_flags & ~(kCGEventFlagMaskAlphaShift | kCGEventFlagMaskControl | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand | kCGEventFlagMaskNumericPad | kCGEventFlagMaskSecondaryFn);
 
     if (pressed(krbn::modifier_flag::caps_lock)) {
       original_flags = CGEventFlags(original_flags | kCGEventFlagMaskAlphaShift);

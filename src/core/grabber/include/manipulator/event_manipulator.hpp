@@ -259,7 +259,7 @@ public:
       return;
     }
 
-    post_key(from_key_code, to_key_code, pressed, false, true);
+    post_key(from_key_code, to_key_code, pressed, false);
 
     // set key repeat
     long initial_key_repeat_milliseconds = 0;
@@ -487,7 +487,7 @@ private:
                                     key_repeat_milliseconds * NSEC_PER_MSEC,
                                     0);
           dispatch_source_set_event_handler(timer_, ^{
-            event_manipulator_.post_key(from_key_code, to_key_code, pressed, true, true);
+            event_manipulator_.post_key(from_key_code, to_key_code, pressed, true);
           });
           dispatch_resume(timer_);
           from_key_code_ = from_key_code;
@@ -546,8 +546,8 @@ private:
 
   bool post_standalone_modifier_key(krbn::key_code key_code) {
     if (auto to_key_code = standalone_modifiers_.get(key_code)) {
-      post_key(*to_key_code, *to_key_code, true, false, false);
-      post_key(*to_key_code, *to_key_code, false, false, false);
+      post_key(*to_key_code, *to_key_code, true, false);
+      post_key(*to_key_code, *to_key_code, false, false);
       return true;
     }
     return false;
@@ -586,17 +586,12 @@ private:
     }
   }
 
-  void post_key(krbn::key_code from_key_code, krbn::key_code to_key_code, bool pressed, bool repeat, bool with_modifier) {
+  void post_key(krbn::key_code from_key_code, krbn::key_code to_key_code, bool pressed, bool repeat) {
     if (event_source_) {
       if (auto cg_key = krbn::types::get_cg_key(to_key_code)) {
         if (auto event = CGEventCreateKeyboardEvent(event_source_, static_cast<CGKeyCode>(*cg_key), pressed)) {
           auto event_flags = CGEventGetFlags(event);
-          CGEventFlags flags;
-          if (with_modifier) {
-            flags = modifier_flag_manager_.get_cg_event_flags(event_flags, to_key_code);
-          } else {
-            flags = modifier_flag_manager_.get_cg_event_flags_no_modifiers(event_flags);
-          }
+          CGEventFlags flags = modifier_flag_manager_.get_cg_event_flags(event_flags, to_key_code);
           CGEventSetFlags(event, flags);
           CGEventSetIntegerValueField(event, kCGKeyboardEventAutorepeat, repeat);
           CGEventPost(kCGHIDEventTap, event);
@@ -608,12 +603,7 @@ private:
         auto hid_system_aux_control_button = krbn::types::get_hid_system_aux_control_button(to_key_code);
         if (hid_system_key || hid_system_aux_control_button) {
           auto event_type = pressed ? krbn::event_type::key_down : krbn::event_type::key_up;
-          IOOptionBits flags;
-          if (with_modifier) {
-            flags = modifier_flag_manager_.get_io_option_bits();
-          } else {
-            flags = 0;
-          }
+          IOOptionBits flags = modifier_flag_manager_.get_io_option_bits();
           event_dispatcher_manager_.post_key(to_key_code, event_type, flags, repeat);
         }
       }
